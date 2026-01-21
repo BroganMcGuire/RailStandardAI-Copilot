@@ -1,10 +1,10 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { RailDocument, GeminiResponse } from "../types";
+import OpenAI from "openai";
+import { RailDocument, AIResponse } from "../types";
 
 export async function queryStandards(
   question: string,
   documents: RailDocument[]
-): Promise<GeminiResponse> {
+): Promise<AIResponse> {
   // Use the API key provided by the build process (defined in vite.config.ts)
   const apiKey = process.env.API_KEY;
   
@@ -12,7 +12,10 @@ export async function queryStandards(
     throw new Error("Missing API Key. Please verify that you have added the API_KEY secret to your GitHub repository settings and successfully redeployed via GitHub Actions.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const openai = new OpenAI({ 
+    apiKey,
+    dangerouslyAllowBrowser: true
+  });
   
   const context = documents
     .map(doc => `--- FILENAME: ${doc.name} ---\n${doc.content}`)
@@ -34,43 +37,50 @@ export async function queryStandards(
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Context:\n${context}\n\nQuestion: ${question}`,
-      config: {
-        systemInstruction,
-        thinkingConfig: { thinkingBudget: 0 },
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            answer: { type: Type.STRING },
-            citations: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  standard: { type: Type.STRING },
-                  clause: { type: Type.STRING },
-                  page: { type: Type.INTEGER }
-                },
-                required: ["standard", "clause", "page"]
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: `Context:\n${context}\n\nQuestion: ${question}` }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "rail_standards_response",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              answer: { type: "string" },
+              citations: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    standard: { type: "string" },
+                    clause: { type: "string" },
+                    page: { type: "integer" }
+                  },
+                  required: ["standard", "clause", "page"],
+                  additionalProperties: false
+                }
               }
-            }
-          },
-          required: ["answer", "citations"]
+            },
+            required: ["answer", "citations"],
+            additionalProperties: false
+          }
         }
       }
     });
 
-    const resultText = response.text;
+    const resultText = response.choices[0]?.message?.content;
     if (!resultText) {
       throw new Error("Empty response received from the AI.");
     }
 
-    return JSON.parse(resultText.trim()) as GeminiResponse;
+    return JSON.parse(resultText.trim()) as AIResponse;
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("Copilot API Error:", error);
     throw new Error(error instanceof Error ? error.message : "Unable to reach the AI assistant. Please check your connection and configuration.");
   }
 }
