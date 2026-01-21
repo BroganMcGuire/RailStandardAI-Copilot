@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { RailDocument, ChatMessage, Citation } from './types';
 import { extractTextFromPdf } from './services/pdfService';
-import { queryStandards } from './services/geminiService';
+import { queryStandards } from './services/copilotService';
 import { 
   getAllDocuments, 
   saveDocument, 

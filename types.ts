@@ -22,7 +22,7 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export interface GeminiResponse {
+export interface AIResponse {
   answer: string;
   citations: Citation[];
 }
