@@ -1,0 +1,5 @@
+{
+  "name": "RailStandard AI (Github with hidden api key)",
+  "description": "A sophisticated AI-powered assistant for querying and analyzing Network Rail standards. Upload PDF documents and get precise answers with clause-level citations.",
+  "requestFramePermissions": []
+}
